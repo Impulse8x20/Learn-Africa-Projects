@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project Management System</title>
+  <style>
+    /* Styling */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f4f4;
+      color: #333;
+    }
+    header {
+      background-color: #333;
+      color: #fff;
+      padding: 20px;
+      text-align: center;
+    }
+    nav {
+      background-color: #ff9800;
+      padding: 10px 0;
+    }
+    nav ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+    }
+    nav ul li {
+      margin: 0 15px;
+    }
+    nav ul li a {
+      text-decoration: none;
+      color: white;
+      font-weight: bold;
+    }
+    main {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 80vh;
+      background-color: #ffcc80;
+      padding: 20px;
+    }
+    .box {
+      background: #fff;
+      padding: 20px;
+      margin: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 600px;
+      text-align: center;
+    }
+    button {
+      padding: 10px 20px;
+      color: #fff;
+      background-color: #5cb85c;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover {
+      background-color: #4cae4c;
+    }
+    input {
+      width: 70%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    table th, table td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: center;
+    }
+    table th {
+      background-color: #ff9800;
+      color: white;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Project Management System</h1>
+  </header>
+  <nav>
+    <ul>
+      <li><a href="#projectForm">Add Project</a></li>
+      <li><a href="#projectList">View Projects</a></li>
+      <li><a href="#generateReport">Generate Report</a></li>
+    </ul>
+  </nav>
+  <main>
+    <div id="projectForm" class="box">
+      <h2>Add New Project</h2>
+      <input type="text" id="projectName" placeholder="Project Name" required>
+      <button id="addProject">Add Project</button>
+    </div>
+    <div id="projectList" class="box">
+      <h2>Project List</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Project</th>
+            <th>Assigned To</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="projects">
+          <!-- Dynamic Content -->
+        </tbody>
+      </table>
+      <button id="clearCompleted">Clear Completed Tasks</button>
+    </div>
+    <div class="box">
+      <button id="generateReport">Generate PDF Report</button>
+    </div>
+  </main>
+  <script>
+    let projectList = [];
+    const team = ["Allen", "Adam", "Sippah", "Sampson", "Eric"];
+    let currentEditorIndex = 0;
+
+    // Load projects from local storage
+    function loadProjects() {
+      const storedProjects = localStorage.getItem('projects');
+      if (storedProjects) {
+        projectList = JSON.parse(storedProjects);
+        renderProjects();
+      }
+    }
+
+    // Save projects to local storage
+    function saveProjects() {
+      localStorage.setItem('projects', JSON.stringify(projectList));
+    }
+
+    // Add Project
+    document.getElementById('addProject').addEventListener('click', () => {
+      const projectName = document.getElementById('projectName').value.trim();
+      if (projectName) {
+        const assignedTo = team[currentEditorIndex];
+        currentEditorIndex = (currentEditorIndex + 1) % team.length;
+        const project = { name: projectName, assignedTo, status: 'Not Started' };
+        projectList.push(project);
+        saveProjects();
+        renderProjects();
+        document.getElementById('projectName').value = '';
+      }
+    });
+
+    // Render Projects
+    function renderProjects() {
+      const tbody = document.getElementById('projects');
+      tbody.innerHTML = '';
+      projectList.forEach((project, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${project.name}</td>
+          <td>${project.assignedTo}</td>
+          <td>${project.status}</td>
+          <td>
+            <button onclick="updateStatus(${index}, 'In Progress')">Start</button>
+            <button onclick="updateStatus(${index}, 'Completed')">Complete</button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    // Update Status
+    function updateStatus(index, status) {
+      projectList[index].status = status;
+      saveProjects();
+      renderProjects();
+    }
+
+    // Clear Completed Tasks
+    document.getElementById('clearCompleted').addEventListener('click', () => {
+      projectList = projectList.filter(project => project.status !== 'Completed');
+      saveProjects();
+      renderProjects();
+    });
+
+    // Generate PDF Report
+    document.getElementById('generateReport').addEventListener('click', () => {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      const completedProjects = projectList.filter(p => p.status === 'Completed');
+      if (completedProjects.length === 0) {
+        alert('No completed projects to generate a report!');
+        return;
+      }
+      doc.setFontSize(16);
+      doc.text('Completed Projects Report', 10, 10);
+      doc.setFontSize(12);
+      completedProjects.forEach((project, i) => {
+        doc.text(`${i + 1}. ${project.name} - Assigned To: ${project.assignedTo}`, 10, 20 + i * 10);
+      });
+      doc.save('Completed_Projects_Report.pdf');
+    });
+
+    // Initialize the application
+    loadProjects();
+  </script>
+</body>
+</html>
